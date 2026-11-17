@@ -1,0 +1,121 @@
+# 출시 — 공개 거울 developedby-dev/sdk-c (ADR-0050). 원천은 모노레포 sdks/c/.github/workflows/release.yml — 거울에서 고치지 않는다.
+# 판 태그(v1.0.0)를 밀면 운영체제 × 아키텍처 다섯으로 정적 · 동적 라이브러리를 짓고, 환경 release에서 대표가 승인한 뒤 머리 파일 · 라이선스와 묶어
+# GitHub 출시물(SHA256SUMS · GitHub 증명)로 올린다. crates.io의 `bydev`를 받으므로 sdk-rust를 먼저 태그한다. 공개 저장소 표준 실행기라 비용이 없다.
+# 손으로 돌리면(workflow_dispatch) 짓기만 한다 — crates.io에 bydev가 아직 없는 출시 전 연습은 rust_from_mirror로 Rust 거울 main을 대신 받는다
+name: release
+on:
+  push:
+    tags: ["v*.*.*"]
+  workflow_dispatch:
+    inputs:
+      rust_from_mirror:
+        description: "crates.io 대신 Rust 거울(developedby-dev/sdk-rust) main을 받는다 — 출시 전 연습만"
+        type: boolean
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: release
+  cancel-in-progress: false
+defaults:
+  run:
+    shell: bash
+jobs:
+  build:
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - name: windows-x64
+            runner: windows-2025
+            targets: x86_64-pc-windows-msvc
+          - name: windows-arm64
+            runner: windows-2025
+            targets: aarch64-pc-windows-msvc
+          - name: macos-universal
+            runner: macos-15
+            targets: aarch64-apple-darwin x86_64-apple-darwin
+          - name: linux-x64
+            runner: ubuntu-24.04
+            targets: x86_64-unknown-linux-gnu
+          - name: linux-arm64
+            runner: ubuntu-24.04-arm
+            targets: aarch64-unknown-linux-gnu
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: 도구
+        env:
+          TARGETS: ${{ matrix.targets }}
+        run: |
+          rustup toolchain install stable --profile minimal
+          for t in $TARGETS; do rustup target add "$t"; done
+      - name: Rust 거울로 대신 받기 (손 실행 연습만 — 태그 출시는 crates.io)
+        if: github.event_name == 'workflow_dispatch' && inputs.rust_from_mirror
+        run: printf '\n[patch.crates-io]\nbydev = { git = "https://github.com/developedby-dev/sdk-rust", branch = "main" }\n' >> Cargo.toml
+      - name: 짓기
+        env:
+          TARGETS: ${{ matrix.targets }}
+        run: for t in $TARGETS; do cargo build --release --target "$t"; done
+      - name: 꾸리기
+        env:
+          NAME: ${{ matrix.name }}
+          TARGETS: ${{ matrix.targets }}
+        run: |
+          version=$(sed -n '/^\[package\]/,/^\[/p' Cargo.toml | sed -n 's/^version = "\(.*\)"/\1/p')
+          dir="bydev-c-${version}-${NAME}"
+          mkdir -p "$dir/lib" "$dir/include"
+          cp include/*.h include/*.hpp "$dir/include/"
+          cp README.md LICENSE-MIT LICENSE-APACHE "$dir/"
+          set -- $TARGETS
+          if [ "$#" -gt 1 ]; then
+            # macOS 유니버설 — 두 아키텍처를 lipo로 하나로
+            lipo -create -output "$dir/lib/libbydev_c.a" "target/$1/release/libbydev_c.a" "target/$2/release/libbydev_c.a"
+            lipo -create -output "$dir/lib/libbydev_c.dylib" "target/$1/release/libbydev_c.dylib" "target/$2/release/libbydev_c.dylib"
+          else
+            for f in libbydev_c.a libbydev_c.so bydev_c.lib bydev_c.dll bydev_c.dll.lib; do
+              if [ -f "target/$1/release/$f" ]; then cp "target/$1/release/$f" "$dir/lib/"; fi
+            done
+          fi
+          if [ "$RUNNER_OS" = "Windows" ]; then 7z a -tzip "$dir.zip" "$dir" > /dev/null; else tar -czf "$dir.tar.gz" "$dir"; fi
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: bydev-c-${{ matrix.name }}
+          path: |
+            bydev-c-*.tar.gz
+            bydev-c-*.zip
+          if-no-files-found: error
+  release:
+    needs: build
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-24.04
+    environment: release
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: bydev-c-*
+          merge-multiple: true
+          path: dist/
+      - name: 태그와 판이 같은지 · 다섯 대상이 모두 있는지
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          cd dist || exit 1
+          for name in windows-x64 windows-arm64 macos-universal linux-x64 linux-arm64; do
+            ls "bydev-c-${TAG#v}-${name}".* > /dev/null
+          done
+          sha256sum bydev-c-* > SHA256SUMS
+      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: dist/bydev-c-*
+      - name: 출시물
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --verify-tag --title "$TAG" --notes "C/C++ SDK ${TAG} — 정적 라이브러리를 권합니다. 내려받은 파일은 SHA256SUMS와 gh attestation verify로 확인할 수 있습니다." dist/*

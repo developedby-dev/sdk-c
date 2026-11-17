@@ -1,0 +1,21 @@
+language = "C"
+header = """/* bydev C SDK — 이 파일은 빌드가 만든다(sdks/c/build.rs · cbindgen). 고치지 않는다.
+ *
+ * 소유권: SDK가 돌려준 char*는 bydev_string_free로, bydev_error*는 bydev_error_free로, 핸들은 그 _free로 놓는다. 콜백이 SDK에 넘기는
+ * 문자열은 bydev_string_new로 만든다(SDK가 놓는다). 인자로 받은 const char*는 그 호출 동안만 유효하다. 문자열은 모두 UTF-8 · NUL 끝.
+ * 모든 함수는 블로킹이고 어느 스레드에서 불러도 된다. 콜백은 SDK의 스레드에서 불린다. */"""
+include_guard = "BYDEV_H"
+no_includes = true
+includes = ["bydev_generated.h"]
+sys_includes = ["stdbool.h", "stddef.h", "stdint.h"]
+cpp_compat = true
+documentation = true
+documentation_style = "c99"
+style = "type"
+usize_is_size_t = true
+
+[export]
+prefix = ""
+
+[enum]
+rename_variants = "ScreamingSnakeCase"
