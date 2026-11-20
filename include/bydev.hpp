@@ -190,7 +190,7 @@ class Session {
   std::unique_ptr<bydev_session, void (*)(bydev_session*)> h_;
 };
 
-/// bydev 라이선스 API 클라이언트.
+/// 데브 라이선스 API 클라이언트.
 class Client {
  public:
   explicit Client(const Config& config) : h_(nullptr, &bydev_client_free) {
