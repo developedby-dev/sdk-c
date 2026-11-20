@@ -4,7 +4,7 @@
 #define BYDEV_GENERATED_H
 
 /* 이 SDK가 따르는 동작 명세 판 */
-#define BYDEV_SPEC_VERSION "1.1.1"
+#define BYDEV_SPEC_VERSION "1.2.0"
 
 /* 에러 코드 — API(contracts ERROR_CODES)와 SDK(명세 3.3). bydev_error_code()와 strcmp로 비교한다 */
 #define BYDEV_CODE_INVALID_CLIENT "INVALID_CLIENT"
@@ -133,7 +133,7 @@ typedef enum bydev_state_type {
 } bydev_state_type;
 
 /* 규칙 (sdks/spec/rules.json) — 배열은 초기화 매크로 */
-#define BYDEV_RULE_SPEC_VERSION "1.1.1"
+#define BYDEV_RULE_SPEC_VERSION "1.2.0"
 #define BYDEV_RULE_API "v1"
 #define BYDEV_RULE_USER_AGENT_LANGUAGES { "typescript", "dotnet", "swift", "kotlin", "python", "go", "rust", "c" }
 #define BYDEV_RULE_USER_AGENT_PATTERN "^bydev-(typescript|dotnet|swift|kotlin|python|go|rust|c)/[0-9]+\\.[0-9]+\\.[0-9]+(-[0-9A-Za-z.-]+)?( .+)?$"
@@ -152,6 +152,8 @@ typedef enum bydev_state_type {
 #define BYDEV_RULE_FINGERPRINT_ALGORITHM "SHA-256"
 #define BYDEV_RULE_FINGERPRINT_SALT "bydev-device-v1"
 #define BYDEV_RULE_FINGERPRINT_ENCODING "hex-lower"
+#define BYDEV_RULE_FINGERPRINT_SOURCE_READ_ATTEMPTS 3
+#define BYDEV_RULE_FINGERPRINT_SOURCE_READ_RETRY_DELAY_MS 300
 #define BYDEV_RULE_STORAGE_SERVICE "dev.developedby.sdk"
 #define BYDEV_RULE_STORAGE_RECORD_VERSION 1
 #define BYDEV_RULE_TRANSIENT_CODES { "NETWORK_ERROR", "RATE_LIMITED", "INTERNAL_ERROR" }

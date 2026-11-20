@@ -84,6 +84,8 @@ struct State {
     fail_save: bool,
     fail_clear: bool,
     fingerprint: Option<String>,
+    /// set fingerprint.fail — 지문 출처를 읽지 못한다(하네스 규약 2절)
+    fail_fingerprint: bool,
 }
 
 static STATE: LazyLock<Mutex<State>> = LazyLock::new(|| Mutex::new(State::default()));
@@ -281,7 +283,11 @@ unsafe extern "C" fn random_uuid(_: *mut c_void) -> *mut c_char {
 }
 
 unsafe extern "C" fn fingerprint_read(_: *mut c_void, _: *mut *mut c_char) -> *mut c_char {
-    state().fingerprint.as_deref().map_or(std::ptr::null_mut(), sdk_string)
+    let s = state();
+    if s.fail_fingerprint {
+        return std::ptr::null_mut();
+    }
+    s.fingerprint.as_deref().map_or(std::ptr::null_mut(), sdk_string)
 }
 
 unsafe extern "C" fn log(_: *mut c_void, level: i32, message: *const c_char) {
@@ -658,6 +664,7 @@ fn main() {
                         "storage.failLoad" => s.fail_load = value,
                         "storage.failSave" => s.fail_save = value,
                         "storage.failClear" => s.fail_clear = value,
+                        "fingerprint.fail" => s.fail_fingerprint = value,
                         _ => {}
                     }
                 }
