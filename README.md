@@ -13,8 +13,15 @@
 | C++ | C++17, 헤더 전용 (`include/bydev.hpp`) |
 | 운영체제 | Windows, macOS, Linux. 라이브러리는 정적(`libbydev_c.a`, `bydev_c.lib`)과 동적(`.dylib`, `.so`, `.dll`) 두 가지입니다. |
 
-운영체제별로 미리 빌드한 라이브러리와 헤더 파일은 서비스 오픈을 준비하면서 공개합니다. 지금은 이 저장소에서 `cargo build --release`로 빌드하며, 결과물은
-`target/release`에 생깁니다.
+운영체제별로 미리 빌드한 라이브러리와 헤더 파일은 공개 저장소 `developedby-dev/sdk-c`의 GitHub 출시물(Releases)에 있습니다. 파일 이름은
+`bydev-c-<판>-<대상>.tar.gz`(Windows는 `.zip`)이고, 대상은 `windows-x64` · `windows-arm64` · `macos-universal` · `linux-x64` · `linux-arm64`입니다.
+받은 파일은 같은 출시물의 `SHA256SUMS`와 `gh attestation verify <파일> --repo developedby-dev/sdk-c`로 확인해 주세요.
+
+- **정적 라이브러리로 링크할 때**: 묶음 안의 `LINK.txt`에 적힌 시스템 라이브러리를 함께 넘겨 주세요(macOS 예:
+  `-framework Security -framework CoreFoundation -liconv`).
+- **macOS 동적 라이브러리**: 설치 이름이 `@rpath/libbydev_c.dylib`입니다. 앱 묶음 안(예: `Contents/Frameworks`)에 두고
+  `-Wl,-rpath,@executable_path/../Frameworks`처럼 앱의 rpath에 그 폴더를 넣어 주세요. 최소 macOS는 11입니다.
+- 직접 빌드하려면 이 저장소에서 `cargo build --release`를 실행하면 되고, 결과물은 `target/release`에 생깁니다.
 
 ## 규칙
 

@@ -22,6 +22,10 @@ defaults:
     shell: bash
 jobs:
   build:
+    env:
+      # macOS만 읽는다 — 정하지 않으면 cc로 짓는 C · 어셈블리 객체(ring)가 러너의 macOS(15.x)를 최소 판으로 잡아, 링크할 때 경고가 나고
+      # 낮은 macOS에서 돌지 않을 수 있다(2026-11-21 0.1.0 출시물). Rust 객체와 같은 11.0으로 맞춘다. 꾸리기의 다시 짓기도 같은 값이어야 해서 작업 전체에 둔다
+      MACOSX_DEPLOYMENT_TARGET: "11.0"
     strategy:
       fail-fast: true
       matrix:
@@ -74,11 +78,20 @@ jobs:
             # macOS 유니버설 — 두 아키텍처를 lipo로 하나로
             lipo -create -output "$dir/lib/libbydev_c.a" "target/$1/release/libbydev_c.a" "target/$2/release/libbydev_c.a"
             lipo -create -output "$dir/lib/libbydev_c.dylib" "target/$1/release/libbydev_c.dylib" "target/$2/release/libbydev_c.dylib"
+            # 설치 이름이 지은 곳의 경로면 링크한 앱이 실행할 때 라이브러리를 찾지 못한다(build.rs) — 두 조각 모두 @rpath인지 확인한다
+            for arch in arm64 x86_64; do
+              name=$(otool -arch "$arch" -D "$dir/lib/libbydev_c.dylib" | tail -1)
+              [ "$name" = "@rpath/libbydev_c.dylib" ] || { echo "::error::$arch 설치 이름이 $name"; exit 1; }
+            done
           else
             for f in libbydev_c.a libbydev_c.so bydev_c.lib bydev_c.dll bydev_c.dll.lib; do
               if [ -f "target/$1/release/$f" ]; then cp "target/$1/release/$f" "$dir/lib/"; fi
             done
           fi
+          # 정적 라이브러리로 링크할 때 함께 넘길 시스템 라이브러리 — rustc가 알려 주는 값을 그대로 싣는다(README 「설치」). 라이브러리를 복사한 뒤에 한다
+          libs=$(cargo rustc --release --target "$1" --lib --crate-type staticlib -- --print native-static-libs 2>&1 | sed -n 's/.*native-static-libs: //p' | tail -1)
+          [ -n "$libs" ] || { echo "::error::native-static-libs를 얻지 못했다"; exit 1; }
+          printf '%s\n' "$libs" > "$dir/LINK.txt"
           if [ "$RUNNER_OS" = "Windows" ]; then 7z a -tzip "$dir.zip" "$dir" > /dev/null; else tar -czf "$dir.tar.gz" "$dir"; fi
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:

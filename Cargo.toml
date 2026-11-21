@@ -1,6 +1,6 @@
 [package]
 name = "bydev-c"
-version = "0.1.0"
+version = "1.0.0"
 edition = "2024"
 rust-version = "1.85"
 description = "데브 라이선스 API 공식 C/C++ SDK — Rust SDK 위 C ABI(cbindgen 머리 파일) + C++ 헤더 전용 래퍼"
@@ -18,7 +18,7 @@ name = "bydev_c"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [dependencies]
-bydev = { version = "0.1.0", features = ["keyring"] }
+bydev = { version = "1.0.0", features = ["keyring"] }
 serde = "1.0.229"
 serde_json = "1.0.154"
 
